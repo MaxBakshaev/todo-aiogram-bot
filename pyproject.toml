@@ -13,7 +13,14 @@ dependencies = [
     "flake8 (>=7.3.0,<8.0.0)",
     "python-dotenv (>=1.1.1,<2.0.0)",
     "djangorestframework (>=3.16.1,<4.0.0)",
-    "celery (>=5.5.3,<6.0.0)"
+    "celery (>=5.5.3,<6.0.0)",
+    "aiogram (>=3.22.0,<4.0.0)",
+    "aiogram-dialog (>=2.4.0,<3.0.0)",
+    "httpx (>=0.28.1,<0.29.0)",
+    "dj-database-url (>=3.0.1,<4.0.0)",
+    "gunicorn (>=23.0.0,<24.0.0)",
+    "psycopg[binary] (>=3.2.10,<4.0.0)",
+    "redis (>=6.4.0,<7.0.0)"
 ]
 
 
