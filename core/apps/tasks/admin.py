@@ -13,7 +13,6 @@ class CategoryAdmin(admin.ModelAdmin):
 
     # Поля, отображаемые в списке
     list_display = [
-        "id",
         "name",
     ]
 
@@ -29,7 +28,6 @@ class TaskAdmin(admin.ModelAdmin):
 
     # Поля, отображаемые в списке
     list_display = [
-        "id",
         "name",
         "description",
         "creation_date",
@@ -62,10 +60,5 @@ class TaskAdmin(admin.ModelAdmin):
         "creation_date",
         "end_date",
         "category",
-        "user",
-    ]
-
-    # Поля только для чтения
-    readonly_fields = [
         "user",
     ]

@@ -16,3 +16,7 @@ update-dev:
 	@git checkout dev
 	@git rebase main
 	@git push --force-with-lease
+
+# 🔩 Запуск celery воркера и вывод логгов в консоль
+celery:
+	celery -A core.project worker --loglevel=info

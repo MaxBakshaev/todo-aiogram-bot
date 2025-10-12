@@ -14,6 +14,7 @@ class Category(models.Model):
     name = models.CharField(
         verbose_name="Категория",
         max_length=32,
+        primary_key=True,
         unique=True,
     )
 
@@ -31,16 +32,17 @@ class Task(models.Model):
     name = models.CharField(
         verbose_name="Название",
         max_length=128,
+        primary_key=True,
         unique=True,
     )
     description = models.TextField(
         verbose_name="Описание",
     )
-    creation_date = models.DateField(
+    creation_date = models.DateTimeField(
         default=timezone.now,
         verbose_name="Дата создания",
     )
-    end_date = models.DateField(
+    end_date = models.DateTimeField(
         default=timezone.now,
         verbose_name="Дата завершения",
     )
@@ -52,7 +54,6 @@ class Task(models.Model):
         on_delete=models.SET_NULL,
         null=True,
     )
-
     user = models.ForeignKey(
         User,
         verbose_name="Пользователь",
@@ -64,7 +65,7 @@ class Task(models.Model):
     class Meta:
         verbose_name = "Задачу"
         verbose_name_plural = "Задачи"
-        ordering = ("-id",)
+        ordering = ("-creation_date",)
 
     def __str__(self):
         """
