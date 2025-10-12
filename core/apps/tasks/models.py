@@ -11,16 +11,29 @@ from django.utils import timezone
 class Category(models.Model):
     """Категория."""
 
+    creation_date = models.DateTimeField(
+        default=timezone.now,
+        verbose_name="Дата создания",
+        primary_key=True,
+    )
     name = models.CharField(
         verbose_name="Категория",
         max_length=32,
-        primary_key=True,
         unique=True,
     )
 
     class Meta:
         verbose_name = "Категорию"
         verbose_name_plural = "Категории"
+
+    def save(self, *args, **kwargs):
+        """Не обновляет creation_date для существующей задачи."""
+
+        if self.pk:
+            self.creation_date = self._meta.get_field(
+                "creation_date"
+            ).value_from_object(self)
+        super().save(*args, **kwargs)
 
     def __str__(self) -> str:
         return self.name
@@ -32,7 +45,6 @@ class Task(models.Model):
     name = models.CharField(
         verbose_name="Название",
         max_length=128,
-        primary_key=True,
         unique=True,
     )
     description = models.TextField(
@@ -41,6 +53,7 @@ class Task(models.Model):
     creation_date = models.DateTimeField(
         default=timezone.now,
         verbose_name="Дата создания",
+        primary_key=True,
     )
     end_date = models.DateTimeField(
         default=timezone.now,
@@ -53,6 +66,7 @@ class Task(models.Model):
         # нет жесткой привязки к категории
         on_delete=models.SET_NULL,
         null=True,
+        blank=True,
     )
     user = models.ForeignKey(
         User,
@@ -66,6 +80,15 @@ class Task(models.Model):
         verbose_name = "Задачу"
         verbose_name_plural = "Задачи"
         ordering = ("-creation_date",)
+
+    def save(self, *args, **kwargs):
+        """Не обновляет creation_date для существующей задачи."""
+
+        if self.pk:
+            self.creation_date = self._meta.get_field(
+                "creation_date"
+            ).value_from_object(self)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         """

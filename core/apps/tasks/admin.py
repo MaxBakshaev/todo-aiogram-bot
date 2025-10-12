@@ -13,6 +13,7 @@ class CategoryAdmin(admin.ModelAdmin):
 
     # Поля, отображаемые в списке
     list_display = [
+        "creation_date",
         "name",
     ]
 
@@ -20,6 +21,14 @@ class CategoryAdmin(admin.ModelAdmin):
     search_fields = [
         "name",
     ]
+
+    def get_fields(self, request, obj=None):
+        """Убирает поле 'creation_date' из редактирования задачи"""
+
+        fields = super().get_fields(request, obj)
+        if obj and "creation_date" in fields:
+            fields.remove("creation_date")
+        return fields
 
 
 @admin.register(Task)
@@ -62,3 +71,11 @@ class TaskAdmin(admin.ModelAdmin):
         "category",
         "user",
     ]
+
+    def get_fields(self, request, obj=None):
+        """Убирает поле 'creation_date' из редактирования задачи"""
+
+        fields = super().get_fields(request, obj)
+        if obj and "creation_date" in fields:
+            fields.remove("creation_date")
+        return fields
