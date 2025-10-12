@@ -22,7 +22,7 @@ from core.project.settings import DEBUG
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("", include("core.apps.tasks.urls", namespace="tasks")),
+    path("api/", include("core.apps.tasks.urls", namespace="tasks")),
 ]
 
 if DEBUG:
