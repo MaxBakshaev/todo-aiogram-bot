@@ -1,7 +1,7 @@
 """
 Документация:
-https://docs.djangoproject.com/en/5.2/topics/db/models
-/"""
+https://docs.djangoproject.com/en/5.2/topics/db/models/
+"""
 
 from django.contrib.auth.models import User
 from django.db import models
