@@ -10,7 +10,7 @@ from .serializers import TaskSerializer, CategorySerializer
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
-    """viewset для работы с задачами."""
+    """viewset для работы с категориями."""
 
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
@@ -18,8 +18,13 @@ class CategoryViewSet(viewsets.ModelViewSet):
 
 
 class TaskViewSet(viewsets.ModelViewSet):
-    """viewset для работы с категориями."""
+    """viewset для работы с задачами."""
 
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
     # permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        """Фильтрация задач пользователя."""
+
+        return Task.objects.filter(user=self.request.user)
