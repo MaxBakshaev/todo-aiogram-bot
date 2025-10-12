@@ -64,6 +64,7 @@ class Task(models.Model):
     class Meta:
         verbose_name = "Задачу"
         verbose_name_plural = "Задачи"
+        ordering = ("-id",)
 
     def __str__(self):
         """
