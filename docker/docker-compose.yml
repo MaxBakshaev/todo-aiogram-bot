@@ -1,0 +1,55 @@
+version: '3.9'
+
+services:
+  django:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.django
+    volumes:
+      - ..:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+    env_file:
+      - ../.env
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.django
+    volumes:
+      - ..:/app
+    env_file:
+      - ../.env
+    depends_on:
+      - postgres
+    command: /bin/bash -c "while ! pg_isready -h postgres -p 5432; do sleep 2; done; python manage.py migrate"
+
+  postgres:
+    image: postgres:latest
+    restart: always
+    env_file:
+      - ../.env
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "35432:5432"
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+  bot:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.bot
+    env_file:
+      - ../.env
+    depends_on:
+      - django
+
+volumes:
+  pgdata:
