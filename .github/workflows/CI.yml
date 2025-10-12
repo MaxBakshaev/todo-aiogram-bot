@@ -27,3 +27,49 @@ jobs:
       - name: Lint application
         run: |
           make lint
+
+  postgres:
+    needs: lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set up Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose
+
+      - name: Create .env
+        run: |
+          echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> .env
+          echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}" >> .env
+          echo "POSTGRES_USER=${{ secrets.POSTGRES_USER }}" >> .env
+          echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env
+          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
+          echo "CELERY_BROKER_URL=${{ secrets.CELERY_BROKER_URL }}" >> .env
+          echo "TOKEN=${{ secrets.TOKEN }}" >> .env
+          echo "API_URL=${{ secrets.API_URL }}" >> .env
+
+      - name: Build services
+        run: |
+          make build
+
+      - name: Start containers
+        run: |
+          make bup
+          
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          POSTGRES_USER=$(grep POSTGRES_USER .env | cut -d '=' -f2)
+
+          timeout 20 bash -c "
+            until docker-compose -f docker/docker-compose.yml exec -T postgres pg_isready -U $POSTGRES_USER; do
+              echo 'Waiting for PostgreSQL...'
+              sleep 2
+            done
+          "
