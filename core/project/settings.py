@@ -35,7 +35,12 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "django",
+    "django:8000",
+    "127.0.0.1",
+    "localhost",
+]
 
 
 # Application definition
@@ -110,9 +115,13 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND")
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
 CELERY_RESULT_BACKEND = CELERY_BROKER_URL
+CELERY_TIMEZONE = "UTC"
+CELERY_TASK_ALWAYS_EAGER = False
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
