@@ -12,8 +12,6 @@ import requests
 import os
 import sys
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from config import (
     TASKS_URL,
     CATEGORIES_URL,
@@ -41,6 +39,9 @@ from messages import (
     EMPTY_FIELD,
     EMPTY_DESCRIPTION,
 )
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -258,7 +259,9 @@ async def task_description(message: types.Message) -> None:
 async def task_category(message: types.Message) -> None:
     """Обработчик категории задачи."""
 
-    user_task_data[message.from_user.id]["category_name"] = message.text.strip()
+    user_task_data[message.from_user.id][
+        "category_name"
+    ] = message.text.strip()  # noqa: E501
     await message.answer(ADD_TASK_END_DATE)
 
 
