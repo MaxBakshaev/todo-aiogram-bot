@@ -67,7 +67,7 @@ ps:
 
 # 🐍 Проверка кода по flake8
 lint:
-	flake8 core --max-line-length=79 --exclude=migrations && \
+	flake8 core bot --max-line-length=79 --exclude=migrations && \
 	echo "Lint: SUCCESS" || (echo "Lint: FAIL" && exit 1)
 
 # ➤ 📄 Экспорт зависимостей poetry в requirements.txt
