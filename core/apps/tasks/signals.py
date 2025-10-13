@@ -20,7 +20,7 @@ def schedule_task_reminder(
 ):
     """
     АВТОМАТИЧЕСКИ ПЛАНИРУЕТ ОТПРАВКУ НАПОМИНАНИЯ ПРИ СОЗДАНИИ ЗАДАЧИ
-    
+
     Что делает:
     1. Срабатывает каждый раз при сохранении задачи
     2. Проверяет - это новая задача? (не обновление)
@@ -43,7 +43,8 @@ def schedule_task_reminder(
         "",
     ).startswith("tg_"):
         print(
-            f"[signals] У задачи '{instance.name}' нет связанного Telegram пользователя"
+            f"[signals] У задачи '{instance.name}' "
+            f"нет связанного Telegram пользователя"
         )
         return
 
@@ -51,7 +52,8 @@ def schedule_task_reminder(
     now = timezone.now()
     if instance.end_date <= now:
         print(
-            f"[signals] Дедлайн задачи '{instance.name}' уже прошел, уведомление не планируется"
+            f"[signals] Дедлайн задачи "
+            f"'{instance.name}' уже прошел, уведомление не планируется"
         )
         return
 
@@ -67,5 +69,6 @@ def schedule_task_reminder(
     )
 
     print(
-        f"[signals] Уведомление запланировано для задачи '{instance.name}' на {eta_utc.isoformat()}"
+        f"[signals] Уведомление запланировано для задачи "
+        f"'{instance.name}' на {eta_utc.isoformat()}"
     )

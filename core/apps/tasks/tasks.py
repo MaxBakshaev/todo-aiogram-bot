@@ -88,7 +88,7 @@ def format_russian_datetime(dt):
 def send_task_reminder(task_pk):
     """
     ОТПРАВЛЯЕТ НАПОМИНАНИЕ В TELEGRAM О ЗАДАЧЕ
-    
+
     Что делает:
     1. Находит задачу в базе данных по primary key
     2. Извлекает Telegram ID пользователя из username (формат: tg_123456)
@@ -112,13 +112,19 @@ def send_task_reminder(task_pk):
 
     # Извлечение telegram_id из username пользователя (формат: tg_123456)
     if not task.user or not task.user.username.startswith("tg_"):
-        print(f"[Celery] У задачи '{task.name}' нет связанного Telegram пользователя")
+        print(
+            f"[Celery] У задачи "
+            f"'{task.name}' нет связанного Telegram пользователя"
+        )
         return
 
     try:
         telegram_id = int(task.user.username.replace("tg_", ""))
     except (ValueError, AttributeError):
-        print(f"[Celery] Неверный формат username у пользователя: {task.user.username}")
+        print(
+            f"[Celery] Неверный формат username у пользователя: "
+            f"{task.user.username}"
+        )
         return
 
     # Конвертация времени в часовой зоне America/Adak для отображения
