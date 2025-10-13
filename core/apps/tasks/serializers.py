@@ -6,26 +6,32 @@ User = get_user_model()
 
 
 class CategorySerializer(serializers.ModelSerializer):
-    """"""
+    """Сериализатор для категорий"""
 
-    # id - это первичный ключ creation_date
-    id = serializers.SerializerMethodField()
+    creation_date = serializers.SerializerMethodField()
 
     class Meta:
         model = Category
-        fields = ["id", "name"]
+        fields = [
+            "creation_date",
+            "name",
+        ]
 
-    def get_id(self, obj):
+    def get_creation_date(self, obj):
+        """Возвращает значение первичного ключа (creation_date) категории."""
+
         return obj.pk
 
 
 class TaskSerializer(serializers.ModelSerializer):
+    """Сериализатор для задач."""
+
     category = CategorySerializer(
         required=False,
         allow_null=True,
         read_only=True,
     )
-    category_id = serializers.PrimaryKeyRelatedField(
+    category_creation_date = serializers.PrimaryKeyRelatedField(
         queryset=Category.objects.all(),
         source="category",
         write_only=True,
@@ -46,7 +52,7 @@ class TaskSerializer(serializers.ModelSerializer):
             "creation_date",
             "end_date",
             "category",
-            "category_id",
+            "category_creation_date",
             "user",
             "user_telegram_id",
         ]
