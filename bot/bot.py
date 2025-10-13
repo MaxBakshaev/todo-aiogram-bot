@@ -1,4 +1,3 @@
-import os
 import asyncio
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -9,41 +8,50 @@ from aiogram.filters import Command
 
 import aiohttp
 import requests
-from dotenv import load_dotenv
 
-load_dotenv()
+import os
+import sys
 
-API_URL = os.getenv("API_URL")
-TASKS_URL = f"{API_URL}/tasks/"
-CATEGORIES_URL = f"{API_URL}/categories/"
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-BOT_TOKEN = os.getenv("TOKEN")
+from config import (
+    TASKS_URL,
+    CATEGORIES_URL,
+    BOT_TOKEN,
+    TIMEZONE,
+    DATE_INPUT_FORMAT,
+    SKIP_KEYWORDS,
+    RU_MONTHS_GEN,
+)
+from messages import (
+    START_MESSAGE,
+    ADD_TASK_NAME,
+    ADD_TASK_DESCRIPTION,
+    ADD_TASK_CATEGORY,
+    ADD_TASK_END_DATE,
+    ERROR_DATE_FORMAT,
+    ERROR_FETCH_TASKS,
+    ERROR_CREATE_TASK,
+    ERROR_CONNECTION,
+    ERROR_READ_RESPONSE,
+    SUCCESS_TASK_CREATED,
+    SUCCESS_NO_TASKS,
+    TASK_LIST_HEADER,
+    TASK_FORMAT,
+    EMPTY_FIELD,
+    EMPTY_DESCRIPTION,
+)
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
 user_task_data: dict[int, dict] = {}
 
-RU_MONTHS_GEN = {
-    1: "января",
-    2: "февраля",
-    3: "марта",
-    4: "апреля",
-    5: "мая",
-    6: "июня",
-    7: "июля",
-    8: "августа",
-    9: "сентября",
-    10: "октября",
-    11: "ноября",
-    12: "декабря",
-}
-
 
 def fmt_human(iso_dt: str) -> str:
     """
     ПРЕОБРАЗУЕТ ISO-ДАТУ В ЧЕЛОВЕКО-ЧИТАЕМЫЙ РУССКИЙ ФОРМАТ
-    
+
     Что делает:
     1. Принимает дату в формате "2025-10-15T08:00:00-10:00"
     2. Конвертирует в часовой пояс America/Adak
@@ -55,12 +63,13 @@ def fmt_human(iso_dt: str) -> str:
     """
 
     if not iso_dt:
-        return "—"
+        return EMPTY_FIELD
     try:
         if iso_dt.endswith("Z"):
             iso_dt = iso_dt.replace("Z", "+00:00")
+
         dt = datetime.fromisoformat(iso_dt)
-        adak = ZoneInfo("America/Adak")
+        adak = ZoneInfo(TIMEZONE)
         dt = dt.astimezone(adak)
 
         hhmm = f"{dt.hour}:{dt.minute:02d}"
@@ -90,7 +99,7 @@ def fetch_user_tasks(user_telegram_id: int):
     """
 
     try:
-        resp = requests.get(
+        response = requests.get(
             TASKS_URL,
             params={"user_telegram_id": user_telegram_id},
             timeout=10,
@@ -98,10 +107,13 @@ def fetch_user_tasks(user_telegram_id: int):
     except requests.RequestException as e:
         return {"error": str(e), "tasks": []}
 
-    if resp.status_code != 200:
-        return {"error": f"HTTP {resp.status_code}: {resp.text}", "tasks": []}
+    if response.status_code != 200:
+        return {
+            "error": f"HTTP {response.status_code}: {response.text}",
+            "tasks": [],
+        }
 
-    data = resp.json()
+    data = response.json()
     if isinstance(data, dict) and isinstance(data.get("results"), list):
         tasks = data["results"]
     elif isinstance(data, list):
@@ -114,7 +126,7 @@ def fetch_user_tasks(user_telegram_id: int):
 async def find_or_create_category_id(name: str | None) -> int | None:
     """
     НАХОДИТ ИЛИ СОЗДАЕТ КАТЕГОРИЮ ПО ИМЕНИ
-    
+
     Что делает:
     1. Если имя пустое или "пропустить" - возвращает None
     2. Ищет категорию в базе через API
@@ -125,25 +137,18 @@ async def find_or_create_category_id(name: str | None) -> int | None:
     Вход: "Работа" → Выход: "2025-10-15T08:00:00-10:00"
     Вход: "пропустить" → Выход: None
     """
-    if not name or name.strip().lower() in {
-        "-",
-        "—",
-        "пропустить",
-        "skip",
-        "none",
-        "null",
-    }:
+    if not name or name.strip().lower() in SKIP_KEYWORDS:
         return None
     name = name.strip()
 
     try:
-        r = requests.get(
+        response = requests.get(
             CATEGORIES_URL,
             params={"name": name},
             timeout=10,
         )
-        if r.status_code == 200:
-            data = r.json()
+        if response.status_code == 200:
+            data = response.json()
             items = (
                 data["results"]
                 if isinstance(data, dict) and "results" in data
@@ -164,13 +169,13 @@ async def find_or_create_category_id(name: str | None) -> int | None:
                 return created.get("id") or created.get("creation_date")
 
             if resp.status == 400:
-                r2 = requests.get(
+                response2 = requests.get(
                     CATEGORIES_URL,
                     params={"name": name},
                     timeout=10,
                 )
-                if r2.status_code == 200:
-                    data = r2.json()
+                if response2.status_code == 200:
+                    data = response2.json()
                     items = (
                         data["results"]
                         if isinstance(data, dict) and "results" in data
@@ -185,7 +190,7 @@ async def find_or_create_category_id(name: str | None) -> int | None:
 async def create_task_in_django(task_data: dict) -> aiohttp.ClientResponse:
     """
     ОТПРАВЛЯЕТ POST-ЗАПРОС НА DJANGO API ДЛЯ СОЗДАНИЯ ЗАДАЧИ
-    
+
     Что делает:
     1. Создает асинхронную HTTP-сессию
     2. Отправляет JSON с данными задачи на endpoint /api/tasks/
@@ -211,51 +216,57 @@ async def create_task_in_django(task_data: dict) -> aiohttp.ClientResponse:
 
 
 @dp.message(Command("start"))
-async def start(message: Message):
-    await message.answer("Привет! Команды: /add_task и /tasks")
+async def start(message: Message) -> None:
+    await message.answer(START_MESSAGE)
 
 
 @dp.message(Command("add_task"))
-async def add_task(message: types.Message):
-    uid = message.from_user.id
-    user_task_data[uid] = {}
-    await message.answer("Отправь название задачи:")
+async def add_task(message: types.Message) -> None:
+    """Начало процесса добавления задачи."""
+
+    user_id = message.from_user.id
+    user_task_data[user_id] = {}
+    await message.answer(ADD_TASK_NAME)
 
 
 @dp.message(
     lambda m: m.from_user.id in user_task_data
     and "name" not in user_task_data[m.from_user.id]
 )
-async def task_name(message: types.Message):
+async def task_name(message: types.Message) -> None:
+    """Обработчик названия задачи."""
+
     user_task_data[message.from_user.id]["name"] = message.text.strip()
-    await message.answer("Отправь описание задачи:")
+    await message.answer(ADD_TASK_DESCRIPTION)
 
 
 @dp.message(
     lambda m: m.from_user.id in user_task_data
     and "description" not in user_task_data[m.from_user.id]
 )
-async def task_description(message: types.Message):
+async def task_description(message: types.Message) -> None:
+    """Обработчик описания задачи."""
+
     user_task_data[message.from_user.id]["description"] = message.text.strip()
-    await message.answer("Укажи категорию (или напиши «пропустить»):")
+    await message.answer(ADD_TASK_CATEGORY)
 
 
 @dp.message(
     lambda m: m.from_user.id in user_task_data
     and "category_name" not in user_task_data[m.from_user.id]
 )
-async def task_category(message: types.Message):
+async def task_category(message: types.Message) -> None:
+    """Обработчик категории задачи."""
+
     user_task_data[message.from_user.id]["category_name"] = message.text.strip()
-    await message.answer(
-        "Отправь дату завершения в формате YYYY-MM-DD HH:mm (America/Adak):"
-    )
+    await message.answer(ADD_TASK_END_DATE)
 
 
 @dp.message(
     lambda m: m.from_user.id in user_task_data
     and "end_date" not in user_task_data[m.from_user.id]
 )
-async def task_end_date(message: types.Message):
+async def task_end_date(message: types.Message) -> None:
     """
     ОБРАБОТЧИК СООБЩЕНИЯ С ДАТОЙ ЗАВЕРШЕНИЯ ЗАДАЧИ
 
@@ -271,28 +282,26 @@ async def task_end_date(message: types.Message):
     Бот: "Задача «Купить молоко» успешно создана!"
     """
 
-    uid = message.from_user.id
+    user_id = message.from_user.id
     try:
-        adak = ZoneInfo("America/Adak")
+        adak = ZoneInfo(TIMEZONE)
         end_dt = datetime.strptime(
             message.text.strip(),
-            "%Y-%m-%d %H:%M",
+            DATE_INPUT_FORMAT,
         ).replace(tzinfo=adak)
-        user_task_data[uid]["end_date"] = end_dt.isoformat()
+        user_task_data[user_id]["end_date"] = end_dt.isoformat()
     except ValueError:
-        await message.answer(
-            "Неверный формат. Нужен YYYY-MM-DD HH:mm. Попробуй ещё раз:"
-        )
+        await message.answer(ERROR_DATE_FORMAT)
         return
 
-    category_name = user_task_data[uid].get("category_name")
+    category_name = user_task_data[user_id].get("category_name")
     category_id = await find_or_create_category_id(category_name)
 
     # Формирование данных для отправки в API
     task_payload = {
-        "name": user_task_data[uid]["name"],
-        "description": user_task_data[uid]["description"],
-        "end_date": user_task_data[uid]["end_date"],
+        "name": user_task_data[user_id]["name"],
+        "description": user_task_data[user_id]["description"],
+        "end_date": user_task_data[user_id]["end_date"],
         "user_telegram_id": message.from_user.id,
     }
     if category_id:
@@ -303,32 +312,37 @@ async def task_end_date(message: types.Message):
         response = await create_task_in_django(task_payload)
 
         if response.status in (200, 201):
+            task_name = user_task_data[user_id]["name"]
             await message.answer(
-                f"Задача «{user_task_data[uid]['name']}» успешно создана!"
+                SUCCESS_TASK_CREATED.format(task_name=task_name),
             )
         else:
             try:
                 error_text = await response.text()
                 await message.answer(
-                    f"Ошибка при создании задачи: {response.status}\n"
-                    f"{error_text[:200]}"
+                    ERROR_CREATE_TASK.format(
+                        status=response.status,
+                        details=error_text[:200],
+                    )
                 )
             except Exception:
                 await message.answer(
-                    f"Ошибка при создании задачи: {response.status}\n"
-                    f"Не удалось прочитать ответ"
+                    ERROR_CREATE_TASK.format(
+                        status=response.status,
+                        details=ERROR_READ_RESPONSE,
+                    )
                 )
 
     except Exception as e:
-        await message.answer(f"Ошибка соединения с сервером: {str(e)}")
+        await message.answer(ERROR_CONNECTION.format(error=str(e)))
 
     finally:
         # Очистка временных данных пользователя
-        user_task_data.pop(uid, None)
+        user_task_data.pop(user_id, None)
 
 
 @dp.message(Command("tasks"))
-async def list_tasks(message: types.Message):
+async def list_tasks(message: types.Message) -> None:
     """
     ОКАЗЫВАЕТ ПОЛЬЗОВАТЕЛЮ ВСЕ ЕГО ЗАДАЧИ
 
@@ -356,37 +370,45 @@ async def list_tasks(message: types.Message):
 
     result = fetch_user_tasks(message.from_user.id)
     if result["error"]:
-        await message.answer(f"Не удалось получить задачи: {result['error']}")
+        await message.answer(ERROR_FETCH_TASKS.format(error=result["error"]))
         return
 
     tasks = result["tasks"]
     if not tasks:
-        await message.answer("У вас нет задач.")
+        await message.answer(SUCCESS_NO_TASKS)
         return
 
-    def fmt(task: dict) -> str:
+    def format_single_task(task: dict) -> str:
         """Форматирование одной задачи."""
 
-        name = task.get("name", "—")
-        desc = task.get("description") or "—"
-        cat = task.get("category") or {}
-        cat_name = cat.get("name") if isinstance(cat, dict) else "—"
-        created = fmt_human(task.get("creation_date"))
-        end = fmt_human(task.get("end_date"))
-        return (
-            f"📌 Задача: {name}\n"
-            f"📃 Описание: {desc}\n"
-            f"🔖 Категория: {cat_name}\n"
-            f"🕒 Дата создания: {created}\n"
-            f"🔥 Дата завершения: {end}"
+        name = task.get("name", EMPTY_FIELD)
+        description = task.get("description") or EMPTY_DESCRIPTION
+        category_data = task.get("category") or {}
+        category_name = (
+            category_data.get("name")
+            if isinstance(category_data, dict)
+            else EMPTY_FIELD
+        )
+
+        created_date = fmt_human(task.get("creation_date"))
+        end_date = fmt_human(task.get("end_date"))
+
+        return TASK_FORMAT.format(
+            name=name,
+            description=description,
+            category=category_name,
+            created_date=created_date,
+            end_date=end_date,
         )
 
     # Форматирование и объединение всех задач
-    task_list = "\n\n".join(fmt(t) for t in tasks if isinstance(t, dict))
-    await message.answer(f"Ваши задачи:\n\n{task_list}")
+    task_list = "\n\n".join(
+        format_single_task(task) for task in tasks if isinstance(task, dict)
+    )
+    await message.answer(TASK_LIST_HEADER + task_list)
 
 
-async def main():
+async def main() -> None:
     await dp.start_polling(bot)
 
 
