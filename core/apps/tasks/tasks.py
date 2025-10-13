@@ -6,12 +6,22 @@ https://docs.celeryq.dev/en/stable/django/first-steps-with-django.html
 from celery import shared_task
 from django.utils import timezone
 import requests
-import os
 
 from .models import Task
-
-
-BOT_TOKEN = os.getenv("TOKEN")
+from .constants import (
+    TELEGRAM_API_URL,
+    LOG_CELERY_TASK_NOT_FOUND,
+    LOG_CELERY_NO_TELEGRAM_USER,
+    LOG_CELERY_INVALID_USERNAME_FORMAT,
+    LOG_CELERY_MESSAGE_SENT,
+    LOG_CELERY_TELEGRAM_API_ERROR,
+    LOG_CELERY_SEND_ERROR,
+    LOG_CELERY_MISSING_CREDENTIALS,
+    REMINDER_MESSAGE_TEMPLATE,
+    EMPTY_DESCRIPTION,
+    EMPTY_CATEGORY,
+    RUSSIAN_MONTHS,
+)
 
 
 def send_tg_message(chat_id: int, text: str) -> None:
@@ -32,16 +42,20 @@ def send_tg_message(chat_id: int, text: str) -> None:
     send_tg_message(123456789, "⏰ Напоминание о задаче!")
     """
 
+    from .constants import BOT_TOKEN
+
     if not BOT_TOKEN or not chat_id:
         print(
-            f"[Celery] Не могу отправить сообщение: "
-            f"BOT_TOKEN={bool(BOT_TOKEN)}, chat_id={chat_id}"
+            LOG_CELERY_MISSING_CREDENTIALS.format(
+                bool(BOT_TOKEN),
+                chat_id,
+            )
         )
         return
 
     try:
         response = requests.post(
-            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+            TELEGRAM_API_URL,
             json={
                 "chat_id": chat_id,
                 "text": text,
@@ -51,37 +65,24 @@ def send_tg_message(chat_id: int, text: str) -> None:
         )
         if response.status_code != 200:
             print(
-                f"[Celery] Ошибка Telegram API: "
-                f"{response.status_code} - {response.text}"
+                LOG_CELERY_TELEGRAM_API_ERROR.format(
+                    response.status_code,
+                    response.text,
+                )
             )
         else:
-            print(f"[Celery] Сообщение отправлено пользователю {chat_id}")
+            print(LOG_CELERY_MESSAGE_SENT.format(chat_id))
     except Exception as e:
-        print(f"[Celery] Ошибка отправки TG: {e}")
+        print(LOG_CELERY_SEND_ERROR.format(e))
 
 
 def format_russian_datetime(dt):
     """Форматирование даты в русский формат."""
 
-    months = [
-        "января",
-        "февраля",
-        "марта",
-        "апреля",
-        "мая",
-        "июня",
-        "июля",
-        "августа",
-        "сентября",
-        "октября",
-        "ноября",
-        "декабря",
-    ]
-
     hour = dt.hour
     minute = f"{dt.minute:02d}"
 
-    return f"{hour}:{minute}, {dt.day} {months[dt.month-1]} {dt.year}"
+    return f"{hour}:{minute}, {dt.day} {RUSSIAN_MONTHS[dt.month-1]} {dt.year}"
 
 
 @shared_task
@@ -107,38 +108,32 @@ def send_task_reminder(task_pk):
     try:
         task = Task.objects.select_related("user").get(pk=task_pk)
     except Task.DoesNotExist:
-        print(f"[Celery] Задача с PK={task_pk} не найдена")
+        print(LOG_CELERY_TASK_NOT_FOUND.format(task_pk))
         return
 
     # Извлечение telegram_id из username пользователя (формат: tg_123456)
     if not task.user or not task.user.username.startswith("tg_"):
-        print(
-            f"[Celery] У задачи "
-            f"'{task.name}' нет связанного Telegram пользователя"
-        )
+        print(LOG_CELERY_NO_TELEGRAM_USER.format(task.name))
         return
 
     try:
         telegram_id = int(task.user.username.replace("tg_", ""))
     except (ValueError, AttributeError):
-        print(
-            f"[Celery] Неверный формат username у пользователя: "
-            f"{task.user.username}"
-        )
+        print(LOG_CELERY_INVALID_USERNAME_FORMAT.format(task.user.username))
         return
 
     # Конвертация времени в часовой зоне America/Adak для отображения
     adak_tz = timezone.get_current_timezone()
     local_dt = timezone.localtime(task.end_date, adak_tz)
 
+    # Формирование сообщения
+    description = task.description or EMPTY_DESCRIPTION
+    category_name = task.category.name if task.category else EMPTY_CATEGORY
+    formatted_date = format_russian_datetime(local_dt)
+
     # Напоминание о задаче
-    message = (
-        f"⏰ <b>Напоминание о задаче</b>\n\n"
-        f"📌 <b>{task.name}</b>\n\n"
-        f"📃 {task.description or 'Без описания'}\n\n"
-        f"🔥 Срок выполнения:\n"
-        f"<b>{format_russian_datetime(local_dt)}</b>\n\n"
-        f"🔖 Категория: {task.category.name if task.category else 'Не указана'}"
+    message = REMINDER_MESSAGE_TEMPLATE.format(
+        task.name, description, formatted_date, category_name
     )
 
     send_tg_message(telegram_id, message)

@@ -7,8 +7,14 @@ from django.utils import timezone
 from datetime import timezone as datetime_timezone
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+
 from .models import Task
 from .tasks import send_task_reminder
+from .constants import (
+    LOG_SIGNALS_NO_TELEGRAM_USER,
+    LOG_SIGNALS_DEADLINE_PASSED,
+    LOG_SIGNALS_NOTIFICATION_SCHEDULED,
+)
 
 
 @receiver(post_save, sender=Task)
@@ -42,19 +48,13 @@ def schedule_task_reminder(
         "username",
         "",
     ).startswith("tg_"):
-        print(
-            f"[signals] У задачи '{instance.name}' "
-            f"нет связанного Telegram пользователя"
-        )
+        print(LOG_SIGNALS_NO_TELEGRAM_USER.format(instance.name))
         return
 
     # Проверка, что дедлайн в будущем
     now = timezone.now()
     if instance.end_date <= now:
-        print(
-            f"[signals] Дедлайн задачи "
-            f"'{instance.name}' уже прошел, уведомление не планируется"
-        )
+        print(LOG_SIGNALS_DEADLINE_PASSED.format(instance.name))
         return
 
     # Конвертация в UTC для Celery
@@ -69,6 +69,8 @@ def schedule_task_reminder(
     )
 
     print(
-        f"[signals] Уведомление запланировано для задачи "
-        f"'{instance.name}' на {eta_utc.isoformat()}"
+        LOG_SIGNALS_NOTIFICATION_SCHEDULED.format(
+            instance.name,
+            eta_utc.isoformat(),
+        )
     )

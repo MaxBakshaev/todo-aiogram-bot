@@ -49,11 +49,10 @@ dp = Dispatcher()
 user_task_data: dict[int, dict] = {}
 
 
-def fmt_human(iso_dt: str) -> str:
+def format_readable(iso_dt: str) -> str:
     """
-    ПРЕОБРАЗУЕТ ISO-ДАТУ В ЧЕЛОВЕКО-ЧИТАЕМЫЙ РУССКИЙ ФОРМАТ
+    ПРЕОБРАЗУЕТ ISO-ДАТУ В ЧИТАЕМЫЙ ФОРМАТ
 
-    Что делает:
     1. Принимает дату в формате "2025-10-15T08:00:00-10:00"
     2. Конвертирует в часовой пояс America/Adak
     3. Форматирует как "8:00, 15 октября 2025"
@@ -83,7 +82,6 @@ def fetch_user_tasks(user_telegram_id: int):
     """
     ПОЛУЧАЕТ СПИСОК ЗАДАЧ ПОЛЬЗОВАТЕЛЯ ИЗ DJANGO API
 
-    Что делает:
     1. Отправляет GET-запрос с параметром user_telegram_id
     2. Обрабатывает возможные ошибки сети
     3. Парсит JSON-ответ
@@ -124,20 +122,22 @@ def fetch_user_tasks(user_telegram_id: int):
     return {"error": None, "tasks": tasks}
 
 
-async def find_or_create_category_id(name: str | None) -> int | None:
+async def find_or_create_category_creation_date(
+    name: str | None,
+) -> int | None:  # noqa: E501
     """
     НАХОДИТ ИЛИ СОЗДАЕТ КАТЕГОРИЮ ПО ИМЕНИ
 
-    Что делает:
     1. Если имя пустое или "пропустить" - возвращает None
     2. Ищет категорию в базе через API
     3. Если не находит - создает новую категорию
-    4. Возвращает ID категории (primary key)
+    4. Возвращает creation_date категории
 
     Пример:
     Вход: "Работа" → Выход: "2025-10-15T08:00:00-10:00"
     Вход: "пропустить" → Выход: None
     """
+
     if not name or name.strip().lower() in SKIP_KEYWORDS:
         return None
     name = name.strip()
@@ -155,36 +155,36 @@ async def find_or_create_category_id(name: str | None) -> int | None:
                 if isinstance(data, dict) and "results" in data
                 else data
             )
-            for it in items or []:
-                if isinstance(it, dict) and it.get("name") == name:
-                    return it.get("id") or it.get("creation_date")
+            for item in items or []:
+                if isinstance(item, dict) and item.get("name") == name:
+                    return item.get("creation_date")
     except Exception:
         pass
 
     async with aiohttp.ClientSession() as session:
         async with session.post(
             CATEGORIES_URL, json={"name": name}, timeout=10
-        ) as resp:
-            if resp.status in (200, 201):
-                created = await resp.json()
-                return created.get("id") or created.get("creation_date")
+        ) as response:
+            if response.status in (200, 201):
+                created = await response.json()
+                return created.get("creation_date")
 
-            if resp.status == 400:
-                response2 = requests.get(
+            if response.status == 400:
+                retry_response = requests.get(
                     CATEGORIES_URL,
                     params={"name": name},
                     timeout=10,
                 )
-                if response2.status_code == 200:
-                    data = response2.json()
+                if retry_response.status_code == 200:
+                    data = retry_response.json()
                     items = (
                         data["results"]
                         if isinstance(data, dict) and "results" in data
                         else data
                     )
-                    for it in items or []:
-                        if isinstance(it, dict) and it.get("name") == name:
-                            return it.get("id") or it.get("creation_date")
+                    for item in items or []:
+                        if isinstance(item, dict) and item.get("name") == name:
+                            return item.get("creation_date")
     return None
 
 
@@ -192,7 +192,6 @@ async def create_task_in_django(task_data: dict) -> aiohttp.ClientResponse:
     """
     ОТПРАВЛЯЕТ POST-ЗАПРОС НА DJANGO API ДЛЯ СОЗДАНИЯ ЗАДАЧИ
 
-    Что делает:
     1. Создает асинхронную HTTP-сессию
     2. Отправляет JSON с данными задачи на endpoint /api/tasks/
     3. Возвращает ответ от сервера
@@ -273,7 +272,6 @@ async def task_end_date(message: types.Message) -> None:
     """
     ОБРАБОТЧИК СООБЩЕНИЯ С ДАТОЙ ЗАВЕРШЕНИЯ ЗАДАЧИ
 
-    Что делает:
     1. Принимает дату от пользователя в формате "YYYY-MM-DD HH:mm"
     2. Парсит и конвертирует в часовой пояс America/Adak
     3. Собирает все данные задачи в один словарь
@@ -298,7 +296,9 @@ async def task_end_date(message: types.Message) -> None:
         return
 
     category_name = user_task_data[user_id].get("category_name")
-    category_id = await find_or_create_category_id(category_name)
+    category_creation_date = await find_or_create_category_creation_date(
+        category_name
+    )  # noqa: E501
 
     # Формирование данных для отправки в API
     task_payload = {
@@ -307,8 +307,8 @@ async def task_end_date(message: types.Message) -> None:
         "end_date": user_task_data[user_id]["end_date"],
         "user_telegram_id": message.from_user.id,
     }
-    if category_id:
-        task_payload["category_id"] = category_id
+    if category_creation_date:
+        task_payload["category_creation_date"] = category_creation_date
 
     try:
         # Отправленние запроса на создание задачи
@@ -393,8 +393,8 @@ async def list_tasks(message: types.Message) -> None:
             else EMPTY_FIELD
         )
 
-        created_date = fmt_human(task.get("creation_date"))
-        end_date = fmt_human(task.get("end_date"))
+        created_date = format_readable(task.get("creation_date"))
+        end_date = format_readable(task.get("end_date"))
 
         return TASK_FORMAT.format(
             name=name,
