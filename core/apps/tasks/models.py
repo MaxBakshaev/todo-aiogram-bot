@@ -97,4 +97,4 @@ class Task(models.Model):
 
         Пример: "Завершить ТЗ до 18:00, 15.10.2025"
         """
-        return f"{self.name} до {self.end_date.strftime("%H:%M, %d.%m.%Y")}"
+        return f'{self.name} до {self.end_date.strftime("%H:%M, %d.%m.%Y")}'
