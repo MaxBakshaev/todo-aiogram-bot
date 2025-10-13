@@ -57,8 +57,30 @@ class TaskSerializer(serializers.ModelSerializer):
         )
 
     def create(self, validated_data):
+        """
+        СОЗДАЕТ НОВУЮ ЗАДАЧУ В БАЗЕ ДАННЫХ
+
+        Что делает:
+        1. Извлекает Telegram ID из входящих данных
+        2. Создает или находит пользователя Django
+        3. Связывает задачу с пользователем
+        4. Сохраняет задачу в базу данных
+
+        Параметры:
+        - validated_data: Проверенные и валидированные данные от API
+
+        Пример validated_data:
+        {
+            "name": "Купить молоко",
+            "description": "Не забыть",
+            "end_date": "2025-10-15T08:00:00-10:00",
+            "user_telegram_id": 123456789,
+            "category_id": "2025-10-15T08:00:00-10:00"
+        }
+        """
+
         tg_id = validated_data.pop("user_telegram_id")
-        
+
         # Создание или получение пользователя с username в формате tg_123456
         user, _ = User.objects.get_or_create(
             username=f"tg_{tg_id}",

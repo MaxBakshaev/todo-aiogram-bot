@@ -18,7 +18,20 @@ def schedule_task_reminder(
     created,
     **kwargs,
 ):
-    """Планирует отправку уведомления при создании задачи."""
+    """
+    АВТОМАТИЧЕСКИ ПЛАНИРУЕТ ОТПРАВКУ НАПОМИНАНИЯ ПРИ СОЗДАНИИ ЗАДАЧИ
+    
+    Что делает:
+    1. Срабатывает каждый раз при сохранении задачи
+    2. Проверяет - это новая задача? (не обновление)
+    3. Проверяет - есть ли связанный Telegram пользователь?
+    4. Проверяет - дедлайн в будущем?
+    5. Планирует выполнение задачи send_task_reminder на время дедлайна
+
+    Пример:
+    Создана задача с дедлайном "2025-10-15 08:00"
+    → Функция планирует выполнение send_task_reminder на это время
+    """
 
     if not created:
         return
@@ -34,7 +47,7 @@ def schedule_task_reminder(
         )
         return
 
-    # Проверяем, что дедлайн в будущем
+    # Проверка, что дедлайн в будущем
     now = timezone.now()
     if instance.end_date <= now:
         print(
@@ -42,12 +55,12 @@ def schedule_task_reminder(
         )
         return
 
-    # Конвертируем в UTC для Celery - ИСПРАВЛЕННАЯ СТРОКА
+    # Конвертация в UTC для Celery
     eta_utc = instance.end_date.astimezone(
         datetime_timezone.utc,
     )
 
-    # Планируем задачу
+    # Планирование задачи
     send_task_reminder.apply_async(
         args=(instance.pk,),
         eta=eta_utc,

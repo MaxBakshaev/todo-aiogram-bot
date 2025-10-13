@@ -15,7 +15,22 @@ BOT_TOKEN = os.getenv("TOKEN")
 
 
 def send_tg_message(chat_id: int, text: str) -> None:
-    """Отправка сообщения в Telegram."""
+    """
+    ОТПРАВЛЯЕТ СООБЩЕНИЕ В TELEGRAM ЧЕРЕЗ BOT API
+
+    Что делает:
+    1. Проверяет наличие токена бота и ID чата
+    2. Отправляет POST-запрос к Telegram API
+    3. Обрабатывает возможные ошибки
+    4. Логирует результат отправки
+
+    Параметры:
+    - chat_id: ID пользователя в Telegram (123456789)
+    - text: Текст сообщения для отправки
+
+    Пример вызова:
+    send_tg_message(123456789, "⏰ Напоминание о задаче!")
+    """
 
     if not BOT_TOKEN or not chat_id:
         print(
@@ -27,7 +42,11 @@ def send_tg_message(chat_id: int, text: str) -> None:
     try:
         response = requests.post(
             f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-            json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"},
+            json={
+                "chat_id": chat_id,
+                "text": text,
+                "parse_mode": "HTML",
+            },
             timeout=10,
         )
         if response.status_code != 200:
@@ -68,8 +87,9 @@ def format_russian_datetime(dt):
 @shared_task
 def send_task_reminder(task_pk):
     """
-    Отправка уведомления в Telegram по наступлению срока задачи.
-
+    ОТПРАВЛЯЕТ НАПОМИНАНИЕ В TELEGRAM О ЗАДАЧЕ
+    
+    Что делает:
     1. Находит задачу в базе данных по primary key
     2. Извлекает Telegram ID пользователя из username (формат: tg_123456)
     3. Форматирует дату выполнения в русском формате
