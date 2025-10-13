@@ -42,6 +42,21 @@ services:
     ports:
       - "6379:6379"
 
+  celery:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.django
+    command: >
+      sh -c "/wait-for-it.sh redis:6379 --  && celery -A core.project worker --loglevel=info"
+    env_file:
+      - ../.env
+    depends_on:
+      - redis
+      - postgres
+    volumes:
+      - ..:/app
+    restart: unless-stopped
+
   bot:
     build:
       context: ..
