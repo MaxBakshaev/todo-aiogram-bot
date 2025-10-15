@@ -13,11 +13,9 @@ BOT_TOKEN = os.getenv("TOKEN")
 
 # Timezone
 TIMEZONE = "America/Adak"
-
-# Date format
 DATE_INPUT_FORMAT = "%Y-%m-%d %H:%M"
 
-# Skip keywords for categories
+# Пропуск названия категории при создании
 SKIP_KEYWORDS = {
     "-",
     "—",
@@ -29,7 +27,7 @@ SKIP_KEYWORDS = {
     "без категории",
 }
 
-# Russian months
+# Месяцы на русском языке
 RU_MONTHS_GEN = {
     1: "января",
     2: "февраля",
