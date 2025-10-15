@@ -7,14 +7,23 @@ from django.contrib.auth.models import User
 from django.db import models
 from django.utils import timezone
 
+from .utils import generate_content_based_id
+
 
 class Category(models.Model):
     """Категория."""
 
+    id = models.CharField(
+        primary_key=True,
+        max_length=16,
+        editable=False,
+        default=generate_content_based_id,
+        verbose_name="ID",
+    )
     creation_date = models.DateTimeField(
         default=timezone.now,
         verbose_name="Дата создания",
-        primary_key=True,
+        db_index=True,
     )
     name = models.CharField(
         verbose_name="Категория",
@@ -27,12 +36,6 @@ class Category(models.Model):
         verbose_name_plural = "Категории"
 
     def save(self, *args, **kwargs):
-        """Не обновляет creation_date для существующей задачи."""
-
-        if self.pk:
-            self.creation_date = self._meta.get_field(
-                "creation_date"
-            ).value_from_object(self)
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:
@@ -42,6 +45,13 @@ class Category(models.Model):
 class Task(models.Model):
     """Задача."""
 
+    id = models.CharField(
+        primary_key=True,
+        max_length=16,
+        editable=False,
+        default=generate_content_based_id,
+        verbose_name="ID",
+    )
     name = models.CharField(
         verbose_name="Название",
         max_length=128,
@@ -53,7 +63,7 @@ class Task(models.Model):
     creation_date = models.DateTimeField(
         default=timezone.now,
         verbose_name="Дата создания",
-        primary_key=True,
+        db_index=True,
     )
     end_date = models.DateTimeField(
         default=timezone.now,
@@ -82,12 +92,6 @@ class Task(models.Model):
         ordering = ("-creation_date",)
 
     def save(self, *args, **kwargs):
-        """Не обновляет creation_date для существующей задачи."""
-
-        if self.pk:
-            self.creation_date = self._meta.get_field(
-                "creation_date"
-            ).value_from_object(self)
         super().save(*args, **kwargs)
 
     def __str__(self):

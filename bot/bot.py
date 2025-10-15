@@ -12,33 +12,19 @@ import requests
 import os
 import sys
 
+# fmt: off
 from config import (
-    TASKS_URL,
-    CATEGORIES_URL,
-    BOT_TOKEN,
-    TIMEZONE,
-    DATE_INPUT_FORMAT,
-    SKIP_KEYWORDS,
-    RU_MONTHS_GEN,
+    TASKS_URL, CATEGORIES_URL, BOT_TOKEN, TIMEZONE,
+    DATE_INPUT_FORMAT, SKIP_KEYWORDS, RU_MONTHS_GEN,
 )
 from messages import (
-    START_MESSAGE,
-    ADD_TASK_NAME,
-    ADD_TASK_DESCRIPTION,
-    ADD_TASK_CATEGORY,
-    ADD_TASK_END_DATE,
-    ERROR_DATE_FORMAT,
-    ERROR_FETCH_TASKS,
-    ERROR_CREATE_TASK,
-    ERROR_CONNECTION,
-    ERROR_READ_RESPONSE,
-    SUCCESS_TASK_CREATED,
-    SUCCESS_NO_TASKS,
-    TASK_LIST_HEADER,
-    TASK_FORMAT,
-    EMPTY_FIELD,
-    EMPTY_DESCRIPTION,
+    START_MESSAGE, ADD_TASK_NAME, ADD_TASK_DESCRIPTION, ADD_TASK_CATEGORY,
+    ADD_TASK_END_DATE, ERROR_DATE_FORMAT, ERROR_FETCH_TASKS,
+    ERROR_CREATE_TASK, ERROR_CONNECTION, ERROR_READ_RESPONSE,
+    SUCCESS_TASK_CREATED, SUCCESS_NO_TASKS, TASK_LIST_HEADER,
+    TASK_FORMAT, EMPTY_FIELD, EMPTY_DESCRIPTION,
 )
+# fmt: on
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -53,12 +39,12 @@ def format_readable(iso_dt: str) -> str:
     """
     ПРЕОБРАЗУЕТ ISO-ДАТУ В ЧИТАЕМЫЙ ФОРМАТ
 
-    1. Принимает дату в формате "2025-10-15T08:00:00-10:00"
+    1. Принимает дату в формате "2025-10-13T10:00:00Z"
     2. Конвертирует в часовой пояс America/Adak
     3. Форматирует как "8:00, 15 октября 2025"
 
     Пример:
-    Вход: "2025-10-15T08:00:00-10:00"
+    Вход: "2025-10-13T10:00:00Z"
     Выход: "8:00, 15 октября 2025"
     """
 
@@ -122,20 +108,9 @@ def fetch_user_tasks(user_telegram_id: int):
     return {"error": None, "tasks": tasks}
 
 
-async def find_or_create_category_creation_date(
-    name: str | None,
-) -> int | None:  # noqa: E501
+async def find_or_create_category_id(name: str | None) -> int | None:
     """
-    НАХОДИТ ИЛИ СОЗДАЕТ КАТЕГОРИЮ ПО ИМЕНИ
-
-    1. Если имя пустое или "пропустить" - возвращает None
-    2. Ищет категорию в базе через API
-    3. Если не находит - создает новую категорию
-    4. Возвращает creation_date категории
-
-    Пример:
-    Вход: "Работа" → Выход: "2025-10-15T08:00:00-10:00"
-    Вход: "пропустить" → Выход: None
+    Возвращает ID категории (строковый PK) или None.
     """
 
     if not name or name.strip().lower() in SKIP_KEYWORDS:
@@ -157,7 +132,7 @@ async def find_or_create_category_creation_date(
             )
             for item in items or []:
                 if isinstance(item, dict) and item.get("name") == name:
-                    return item.get("creation_date")
+                    return item.get("id")
     except Exception:
         pass
 
@@ -167,7 +142,7 @@ async def find_or_create_category_creation_date(
         ) as response:
             if response.status in (200, 201):
                 created = await response.json()
-                return created.get("creation_date")
+                return created.get("id")
 
             if response.status == 400:
                 retry_response = requests.get(
@@ -184,7 +159,7 @@ async def find_or_create_category_creation_date(
                     )
                     for item in items or []:
                         if isinstance(item, dict) and item.get("name") == name:
-                            return item.get("creation_date")
+                            return item.get("id")
     return None
 
 
@@ -296,9 +271,7 @@ async def task_end_date(message: types.Message) -> None:
         return
 
     category_name = user_task_data[user_id].get("category_name")
-    category_creation_date = await find_or_create_category_creation_date(
-        category_name
-    )  # noqa: E501
+    category_id = await find_or_create_category_id(category_name)
 
     # Формирование данных для отправки в API
     task_payload = {
@@ -307,8 +280,8 @@ async def task_end_date(message: types.Message) -> None:
         "end_date": user_task_data[user_id]["end_date"],
         "user_telegram_id": message.from_user.id,
     }
-    if category_creation_date:
-        task_payload["category_creation_date"] = category_creation_date
+    if category_id:
+        task_payload["category_id"] = category_id
 
     try:
         # Отправленние запроса на создание задачи
@@ -347,7 +320,7 @@ async def task_end_date(message: types.Message) -> None:
 @dp.message(Command("tasks"))
 async def list_tasks(message: types.Message) -> None:
     """
-    ОКАЗЫВАЕТ ПОЛЬЗОВАТЕЛЮ ВСЕ ЕГО ЗАДАЧИ
+    ПОКАЗЫВАЕТ ПОЛЬЗОВАТЕЛЮ ВСЕ ЕГО ЗАДАЧИ
 
     Что делает:
     1. Получает задачи пользователя из Django API

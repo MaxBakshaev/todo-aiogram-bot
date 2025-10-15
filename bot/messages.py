@@ -9,7 +9,7 @@ START_MESSAGE = """
 # Сообщения процесса добавления задачи
 ADD_TASK_NAME = "Отправь название задачи:"
 ADD_TASK_DESCRIPTION = "Отправь описание задачи:"
-ADD_TASK_CATEGORY = "Укажи категорию (или напиши «пропустить»):"
+ADD_TASK_CATEGORY = "Укажи категорию (или напиши - ):"
 ADD_TASK_END_DATE = (
     "Отправь дату завершения в формате YYYY-MM-DD HH:mm (America/Adak):"
 )
