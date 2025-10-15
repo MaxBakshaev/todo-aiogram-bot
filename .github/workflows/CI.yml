@@ -62,7 +62,7 @@ jobs:
 
       - name: Start containers
         run: |
-          make bup
+          make upnolog
           
       - name: Wait for PostgreSQL to be ready
         run: |

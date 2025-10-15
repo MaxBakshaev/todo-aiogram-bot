@@ -109,15 +109,15 @@ def fetch_user_tasks(user_telegram_id: int):
 
 
 async def find_or_create_category_id(name: str | None) -> int | None:
-    """
-    Возвращает ID категории (строковый PK) или None.
-    """
+    """Находит или создает категорию по имени."""
 
     if not name or name.strip().lower() in SKIP_KEYWORDS:
         return None
+
     name = name.strip()
 
     try:
+        # Фильтрация по имени
         response = requests.get(
             CATEGORIES_URL,
             params={"name": name},
@@ -125,17 +125,18 @@ async def find_or_create_category_id(name: str | None) -> int | None:
         )
         if response.status_code == 200:
             data = response.json()
-            items = (
-                data["results"]
-                if isinstance(data, dict) and "results" in data
-                else data
-            )
-            for item in items or []:
+
+            # Обработка обоих форматов ответа
+            items = data.get("results", []) if isinstance(data, dict) else data
+
+            for item in items:
                 if isinstance(item, dict) and item.get("name") == name:
                     return item.get("id")
+
     except Exception:
         pass
 
+    # Создание новой категории
     async with aiohttp.ClientSession() as session:
         async with session.post(
             CATEGORIES_URL, json={"name": name}, timeout=10
@@ -144,22 +145,6 @@ async def find_or_create_category_id(name: str | None) -> int | None:
                 created = await response.json()
                 return created.get("id")
 
-            if response.status == 400:
-                retry_response = requests.get(
-                    CATEGORIES_URL,
-                    params={"name": name},
-                    timeout=10,
-                )
-                if retry_response.status_code == 200:
-                    data = retry_response.json()
-                    items = (
-                        data["results"]
-                        if isinstance(data, dict) and "results" in data
-                        else data
-                    )
-                    for item in items or []:
-                        if isinstance(item, dict) and item.get("name") == name:
-                            return item.get("id")
     return None
 
 
