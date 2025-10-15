@@ -5,38 +5,11 @@ https://www.django-rest-framework.org/api-guide/permissions/#isauthenticatedorre
 https://django-filter.readthedocs.io/en/stable/
 """
 
-from django_filters.rest_framework import (
-    DjangoFilterBackend,
-    FilterSet,
-    CharFilter,
-)
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, status, mixins
+from rest_framework.response import Response
 
 from .models import Task, Category
 from .serializers import TaskSerializer, CategorySerializer
-
-
-class TaskFilter(FilterSet):
-    """Фильтр для задач."""
-
-    user_telegram_id = CharFilter(method="filter_by_tg")
-
-    def filter_by_tg(
-        self,
-        queryset,
-        name,
-        value,
-    ):
-        """Возвращает отфильтрованный queryset задач пользователя"""
-
-        return queryset.filter(user__username=f"tg_{value}")
-
-    class Meta:
-        model = Task
-        fields = [
-            "user_telegram_id",
-            "category",
-        ]
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -51,30 +24,57 @@ class CategoryViewSet(viewsets.ModelViewSet):
     # Разрешения: доступ разрешен всем пользователям
     permission_classes = [permissions.AllowAny]
 
-    # Бэкенды фильтрации
-    filter_backends = [DjangoFilterBackend]
+    def get_queryset(self):
+        """Фильтрация по имени через параметр запроса."""
 
-    # Поля, по которым доступна фильтрация
-    filterset_fields = ["name"]
+        queryset = Category.objects.all()
+        name = self.request.query_params.get("name")
+        if name:
+            return queryset.filter(name__icontains=name)
+        return queryset
 
 
-class TaskViewSet(viewsets.ModelViewSet):
-    """ViewSet для задач."""
+class TaskViewSet(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet,
+):
+    """
+    ViewSet для создания задачи и получения списка своих задач.
 
-    # Queryset с оптимизацией через select_related
-    queryset = Task.objects.select_related(
-        "user",
-        "category",
-    ).all()
+    Доступные endpoints:
+    - GET /api/tasks/?user_telegram_id=123 - список задач пользователя
+    - POST /api/tasks/ - создание новой задачи
+    """
 
-    # Сериализатор для преобразования данных задачи
     serializer_class = TaskSerializer
-
-    # Разрешения: доступ разрешен всем пользователям
     permission_classes = [permissions.AllowAny]
 
-    # Бэкенды фильтрации
-    filter_backends = [DjangoFilterBackend]
+    def get_queryset(self):
+        """
+        Отображение для пользователей своих задач.
+        """
+        queryset = Task.objects.select_related(
+            "user",
+            "category",
+        )
 
-    # Кастомный класс фильтра для задач
-    filterset_class = TaskFilter
+        telegram_id = self.request.query_params.get("user_telegram_id")
+        if telegram_id:
+            return queryset.filter(user__username=f"tg_{telegram_id}")
+
+        return queryset.none()
+
+    def list(self, request, *args, **kwargs):
+        """
+        Переопределение list для обязательной фильтрации.
+        """
+        if not request.query_params.get("user_telegram_id"):
+            return Response(
+                {
+                    "error": "Для доступа к задачам необходимо указать user_telegram_id",  # noqa: E501
+                    "example": "/api/tasks/?user_telegram_id=123456789",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return super().list(request, *args, **kwargs)
