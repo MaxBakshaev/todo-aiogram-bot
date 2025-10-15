@@ -1,3 +1,9 @@
+"""
+Документация:
+https://www.django-rest-framework.org/api-guide/serializers/
+https://www.django-rest-framework.org/api-guide/serializers/#modelserializer
+"""
+
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from .models import Task, Category
@@ -8,30 +14,29 @@ User = get_user_model()
 class CategorySerializer(serializers.ModelSerializer):
     """Сериализатор для категорий"""
 
-    creation_date = serializers.SerializerMethodField()
-
     class Meta:
         model = Category
         fields = [
+            "id",
             "creation_date",
             "name",
         ]
 
-    def get_creation_date(self, obj):
-        """Возвращает значение первичного ключа (creation_date) категории."""
-
-        return obj.pk
-
 
 class TaskSerializer(serializers.ModelSerializer):
-    """Сериализатор для задач."""
+    """
+    Сериализатор для задач.
+
+    Документация для полей:
+    https://www.django-rest-framework.org/api-guide/fields/
+    """
 
     category = CategorySerializer(
         required=False,
         allow_null=True,
         read_only=True,
     )
-    category_creation_date = serializers.PrimaryKeyRelatedField(
+    category_id = serializers.PrimaryKeyRelatedField(
         queryset=Category.objects.all(),
         source="category",
         write_only=True,
@@ -47,16 +52,18 @@ class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
         fields = [
+            "id",
             "name",
             "description",
             "creation_date",
             "end_date",
             "category",
-            "category_creation_date",
+            "category_id",
             "user",
             "user_telegram_id",
         ]
         read_only_fields = (
+            "id",
             "creation_date",
             "user",
             "category",
@@ -64,25 +71,10 @@ class TaskSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         """
-        СОЗДАЕТ НОВУЮ ЗАДАЧУ В БАЗЕ ДАННЫХ
+        Создает задачу и связывает с пользователем по Telegram ID.
 
-        Что делает:
-        1. Извлекает Telegram ID из входящих данных
-        2. Создает или находит пользователя Django
-        3. Связывает задачу с пользователем
-        4. Сохраняет задачу в базу данных
-
-        Параметры:
-        - validated_data: Проверенные и валидированные данные от API
-
-        Пример validated_data:
-        {
-            "name": "Купить молоко",
-            "description": "Не забыть",
-            "end_date": "2025-10-15T08:00:00-10:00",
-            "user_telegram_id": 123456789,
-            "category_id": "2025-10-15T08:00:00-10:00"
-        }
+        Документация:
+        https://www.django-rest-framework.org/api-guide/serializers/#saving-instances
         """
 
         tg_id = validated_data.pop("user_telegram_id")
