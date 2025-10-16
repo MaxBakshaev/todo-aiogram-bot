@@ -28,6 +28,11 @@ LOG_SIGNALS_DEADLINE_PASSED = (
 LOG_SIGNALS_NOTIFICATION_SCHEDULED = (
     "[signals] Уведомление запланировано для задачи '{}' на {}"
 )
+LOG_SIGNALS_NOTIFICATION_RESCHEDULED = (
+    "🔄 Напоминание перепланировано для задачи '{}' на {}"
+)
+LOG_SIGNALS_TASK_REVOKED = "📭 Старое напоминание отменено для задачи '{}'"
+
 
 # Напоминание о задаче
 REMINDER_MESSAGE_TEMPLATE = (

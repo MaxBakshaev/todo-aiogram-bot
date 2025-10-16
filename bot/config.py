@@ -12,7 +12,7 @@ CATEGORIES_URL = f"{API_URL}/categories/"
 BOT_TOKEN = os.getenv("TOKEN")
 
 # Timezone
-TIMEZONE = "America/Adak"
+TIMEZONE = "Europe/Moscow"
 DATE_INPUT_FORMAT = "%Y-%m-%d %H:%M"
 
 # Пропуск названия категории при создании

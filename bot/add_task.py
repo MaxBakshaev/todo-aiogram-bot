@@ -110,8 +110,10 @@ async def on_task_end_date_entered(
 
     try:
         # Парсинг и валидация даты
-        adak = ZoneInfo(TIMEZONE)
-        end_dt = datetime.strptime(text, "%Y-%m-%d %H:%M").replace(tzinfo=adak)
+        moscow_tz = ZoneInfo(TIMEZONE)
+        end_dt = datetime.strptime(text, "%Y-%m-%d %H:%M").replace(
+            tzinfo=moscow_tz
+        )  # noqa: E501
         dialog_manager.dialog_data["end_date"] = end_dt.isoformat()
 
         # Создание задачи и завершение диалога

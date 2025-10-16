@@ -128,7 +128,7 @@ CELERY_TASK_ALWAYS_EAGER = False
 
 LANGUAGE_CODE = "ru"
 
-TIME_ZONE = "America/Adak"
+TIME_ZONE = "Europe/Moscow"
 
 USE_I18N = True
 
