@@ -5,10 +5,12 @@
 - zoneinfo: https://docs.python.org/3/library/zoneinfo.html
 """
 
-from typing import Any
-import requests
+from aiogram.types import Message
 import aiohttp
 from datetime import datetime
+from functools import wraps
+import requests
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from config import (
@@ -18,7 +20,43 @@ from config import (
     TIMEZONE,
     RU_MONTHS_GEN,
 )
-from messages import EMPTY_FIELD, EMPTY_DESCRIPTION
+from messages import (
+    EMPTY_FIELD,
+    EMPTY_DESCRIPTION,
+    ERROR_FETCH_TASKS,
+    SUCCESS_NO_TASKS,
+)
+
+
+def tasks_check(func):
+    """
+    Декоратор для проверки наличия задач у пользователя.
+    Автоматически обрабатывает ошибки и пустые списки.
+    """
+
+    @wraps(func)
+    async def wrapper(
+        message: Message,
+        *args,
+        **kwargs,
+    ) -> Any | None:
+        result = fetch_user_tasks(message.from_user.id)
+
+        if result["error"]:
+            await message.answer(
+                ERROR_FETCH_TASKS.format(error=result["error"])
+            )  # noqa: E501
+            return
+
+        tasks = result["tasks"]
+        if not tasks:
+            await message.answer(SUCCESS_NO_TASKS)
+            return
+
+        # Передача задачи в декорируемую функцию
+        return await func(message, tasks, *args, **kwargs)
+
+    return wrapper
 
 
 async def find_or_create_category_id(name: str | None) -> int | None:
@@ -68,8 +106,8 @@ def format_readable(iso_dt: str) -> str:
             iso_dt = iso_dt.replace("Z", "+00:00")
 
         dt = datetime.fromisoformat(iso_dt)
-        adak = ZoneInfo(TIMEZONE)
-        dt = dt.astimezone(adak)
+        moscow_tz = ZoneInfo(TIMEZONE)
+        dt = dt.astimezone(moscow_tz)
 
         hhmm = f"{dt.hour}:{dt.minute:02d}"
         return f"{hhmm}, {dt.day} {RU_MONTHS_GEN[dt.month]} {dt.year}"
@@ -145,3 +183,82 @@ def fetch_user_tasks(user_telegram_id: int) -> dict[str, Any]:
     else:
         tasks = []
     return {"error": None, "tasks": tasks}
+
+
+def fetch_single_task(
+    task_id: str,
+    user_telegram_id: int,
+) -> dict[str, Any]:
+    """Получает конкретную задачу по ID."""
+
+    try:
+        response = requests.get(
+            f"{TASKS_URL}{task_id}/",
+            params={"user_telegram_id": user_telegram_id},
+            timeout=10,
+        )
+    except requests.RequestException as e:
+        return {"error": str(e), "task": None}
+
+    if response.status_code != 200:
+        return {
+            "error": f"HTTP {response.status_code}: {response.text}",
+            "task": None,
+        }
+
+    return {"error": None, "task": response.json()}
+
+
+async def update_task(
+    task_id: str,
+    update_data: dict,
+    user_telegram_id: int,
+) -> dict[str, Any]:
+    """Обновляет задачу через API."""
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.patch(
+                f"{TASKS_URL}{task_id}/",
+                json=update_data,
+                params={"user_telegram_id": user_telegram_id},
+                timeout=10,
+            ) as response:
+                if response.status == 200:
+                    return {"error": None, "task": await response.json()}
+                else:
+                    error_text = await response.text()
+                    return {
+                        "error": f"HTTP {response.status}: {error_text}",
+                        "task": None,
+                    }
+    except Exception as e:
+        return {"error": str(e), "task": None}
+
+
+async def delete_task(
+    task_id: str,
+    user_telegram_id: int,
+) -> dict[str, Any]:
+    """Удаляет задачу через API."""
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.delete(
+                f"{TASKS_URL}{task_id}/",
+                params={"user_telegram_id": user_telegram_id},
+                timeout=10,
+            ) as response:
+                if response.status in (200, 204):
+                    return {"error": None}
+                else:
+                    error_text = await response.text()
+                    return {"error": f"HTTP {response.status}: {error_text}"}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def format_task_for_list(task: dict, index: int) -> str:
+    """Форматирует задачу для отображения в списке с номером."""
+
+    task_text = format_single_task(task)
+    return f"#{index + 1}\n{task_text}"

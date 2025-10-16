@@ -122,9 +122,9 @@ def send_task_reminder(task_pk):
         print(LOG_CELERY_INVALID_USERNAME_FORMAT.format(task.user.username))
         return
 
-    # Конвертация времени в часовой зоне America/Adak для отображения
-    adak_tz = timezone.get_current_timezone()
-    local_dt = timezone.localtime(task.end_date, adak_tz)
+    # Конвертация времени в часовой зоне Москвы для отображения
+    moscow_tz = timezone.get_current_timezone()  # Теперь будет Europe/Moscow
+    local_dt = timezone.localtime(task.end_date, moscow_tz)
 
     # Формирование сообщения
     description = task.description or EMPTY_DESCRIPTION
