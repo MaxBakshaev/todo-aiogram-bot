@@ -16,6 +16,7 @@ from zoneinfo import ZoneInfo
 
 from config import TASKS_URL, TIMEZONE
 from messages import (
+    ERROR_CREATE_TASK_API,
     TASK_NAME_PROMPT,
     TASK_DESCRIPTION_PROMPT,
     TASK_CATEGORY_PROMPT,
@@ -69,7 +70,7 @@ async def on_task_category_entered(
     await dialog_manager.next()
 
 
-async def create_task_from_dialog(dialog_manager: DialogManager):
+async def create_task_from_dialog(dialog_manager: DialogManager) -> None:
     """Создает задачу в системе через API на основе данных из диалога."""
 
     data = dialog_manager.dialog_data
@@ -92,11 +93,14 @@ async def create_task_from_dialog(dialog_manager: DialogManager):
 
     # Отправка запроса к API
     async with aiohttp.ClientSession() as session:
-        async with session.post(TASKS_URL, json=task_payload) as response:
+        async with session.post(
+            TASKS_URL,
+            json=task_payload,
+        ) as response:
             if response.status not in (200, 201):
                 error_text = await response.text()
                 await dialog_manager.event.answer(
-                    f"❌ Ошибка при создании задачи: {error_text}"
+                    ERROR_CREATE_TASK_API.format(error=error_text)
                 )
 
 
@@ -105,15 +109,16 @@ async def on_task_end_date_entered(
     widget: ManagedTextInput,
     dialog_manager: DialogManager,
     text: str,
-):
+) -> None:
     """Обработчик ввода даты завершения задачи."""
 
     try:
         # Парсинг и валидация даты
         moscow_tz = ZoneInfo(TIMEZONE)
-        end_dt = datetime.strptime(text, "%Y-%m-%d %H:%M").replace(
-            tzinfo=moscow_tz
-        )  # noqa: E501
+        end_dt = datetime.strptime(
+            text,
+            "%Y-%m-%d %H:%M",
+        ).replace(tzinfo=moscow_tz)
         dialog_manager.dialog_data["end_date"] = end_dt.isoformat()
 
         # Создание задачи и завершение диалога
@@ -125,8 +130,10 @@ async def on_task_end_date_entered(
 
 
 async def on_cancel_clicked(
-    message: Message, button: Button, dialog_manager: DialogManager
-):
+    message: Message,
+    button: Button,
+    dialog_manager: DialogManager,
+) -> None:
     """Обработчик отмены создания задачи."""
 
     await message.answer(TASK_CREATION_CANCELLED)
@@ -138,8 +145,14 @@ async def on_cancel_clicked(
 add_task_dialog = Dialog(
     Window(
         Const(TASK_NAME_PROMPT),
-        TextInput(id="task_name_input", on_success=on_task_name_entered),
-        Cancel(Const(BUTTON_CANCEL), on_click=on_cancel_clicked),
+        TextInput(
+            id="task_name_input",
+            on_success=on_task_name_entered,
+        ),
+        Cancel(
+            Const(BUTTON_CANCEL),
+            on_click=on_cancel_clicked,
+        ),
         state=AddTaskStates.name,
     ),
     Window(
@@ -149,7 +162,10 @@ add_task_dialog = Dialog(
             on_success=on_task_description_entered,
         ),
         Back(Const(BUTTON_BACK)),
-        Cancel(Const(BUTTON_CANCEL), on_click=on_cancel_clicked),
+        Cancel(
+            Const(BUTTON_CANCEL),
+            on_click=on_cancel_clicked,
+        ),
         state=AddTaskStates.description,
     ),
     Window(
@@ -159,7 +175,10 @@ add_task_dialog = Dialog(
             on_success=on_task_category_entered,
         ),
         Back(Const(BUTTON_BACK)),
-        Cancel(Const(BUTTON_CANCEL), on_click=on_cancel_clicked),
+        Cancel(
+            Const(BUTTON_CANCEL),
+            on_click=on_cancel_clicked,
+        ),
         state=AddTaskStates.category,
     ),
     Window(
@@ -169,7 +188,10 @@ add_task_dialog = Dialog(
             on_success=on_task_end_date_entered,
         ),
         Back(Const(BUTTON_BACK)),
-        Cancel(Const(BUTTON_CANCEL), on_click=on_cancel_clicked),
+        Cancel(
+            Const(BUTTON_CANCEL),
+            on_click=on_cancel_clicked,
+        ),
         state=AddTaskStates.end_date,
     ),
 )

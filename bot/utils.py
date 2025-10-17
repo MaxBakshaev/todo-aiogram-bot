@@ -54,7 +54,12 @@ def tasks_check(func):
             return
 
         # Передача задачи в декорируемую функцию
-        return await func(message, tasks, *args, **kwargs)
+        return await func(
+            message,
+            tasks,
+            *args,
+            **kwargs,
+        )
 
     return wrapper
 
@@ -76,7 +81,14 @@ async def find_or_create_category_id(name: str | None) -> int | None:
         )
         if response.status_code == 200:
             data = response.json()
-            items = data.get("results", []) if isinstance(data, dict) else data
+            items = (
+                data.get("results", [])
+                if isinstance(
+                    data,
+                    dict,
+                )
+                else data
+            )
 
             for item in items:
                 if isinstance(item, dict) and item.get("name") == name:
@@ -176,7 +188,10 @@ def fetch_user_tasks(user_telegram_id: int) -> dict[str, Any]:
         }
 
     data = response.json()
-    if isinstance(data, dict) and isinstance(data.get("results"), list):
+    if isinstance(data, dict) and isinstance(
+        data.get("results"),
+        list,
+    ):
         tasks = data["results"]
     elif isinstance(data, list):
         tasks = data
@@ -225,7 +240,10 @@ async def update_task(
                 timeout=10,
             ) as response:
                 if response.status == 200:
-                    return {"error": None, "task": await response.json()}
+                    return {
+                        "error": None,
+                        "task": await response.json(),
+                    }
                 else:
                     error_text = await response.text()
                     return {
@@ -233,7 +251,10 @@ async def update_task(
                         "task": None,
                     }
     except Exception as e:
-        return {"error": str(e), "task": None}
+        return {
+            "error": str(e),
+            "task": None,
+        }
 
 
 async def delete_task(
@@ -257,7 +278,10 @@ async def delete_task(
         return {"error": str(e)}
 
 
-def format_task_for_list(task: dict, index: int) -> str:
+def format_task_for_list(
+    task: dict,
+    index: int,
+) -> str:
     """Форматирует задачу для отображения в списке с номером."""
 
     task_text = format_single_task(task)
