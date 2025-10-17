@@ -26,6 +26,17 @@ from messages import (
     ERROR_DATE_FORMAT,
     SUCCESS_TASK_UPDATED,
     TASK_UPDATE_CANCELLED,
+    ERROR_LOAD_TASK,
+    ERROR_UPDATE_TASK,
+    ERROR_CREATE_CATEGORY,
+    SELECT_TASK_EDIT,
+    EDIT_TASK_HEADER,
+    BUTTON_EDIT_NAME,
+    BUTTON_EDIT_DESCRIPTION,
+    BUTTON_EDIT_CATEGORY,
+    BUTTON_EDIT_END_DATE,
+    NO_DESCRIPTION,
+    NO_CATEGORY,
 )
 from utils import (
     fetch_user_tasks,
@@ -75,18 +86,22 @@ async def on_task_selected_for_edit(
 
 
 async def get_task_data(
-    dialog_manager: DialogManager, **kwargs
+    dialog_manager: DialogManager,
+    **kwargs,
 ) -> dict | dict[str, Any]:
     """Получает данные выбранной задачи."""
 
     task_id = dialog_manager.dialog_data.get("task_id")
     user_id = dialog_manager.event.from_user.id
 
-    result = fetch_single_task(task_id, user_id)
+    result = fetch_single_task(
+        task_id,
+        user_id,
+    )
 
     if result["error"]:
         await dialog_manager.event.answer(
-            f"Ошибка загрузки задачи: {result['error']}",
+            ERROR_LOAD_TASK.format(error=result["error"]),
         )
         await dialog_manager.done()
         return {}
@@ -94,20 +109,32 @@ async def get_task_data(
     task = result["task"]
     dialog_manager.dialog_data["current_task"] = task
 
-    category_name = "—"
-    if task.get("category") and isinstance(task["category"], dict):
-        category_name = task["category"].get("name", "—")
+    category_name = NO_CATEGORY
+    if task.get("category") and isinstance(
+        task["category"],
+        dict,
+    ):
+        category_name = task["category"].get(
+            "name",
+            NO_CATEGORY,
+        )
 
     return {
         "task_name": task.get("name", ""),
-        "task_description": task.get("description", "") or "Без описания",
+        "task_description": task.get(
+            "description",
+            "",
+        )
+        or NO_DESCRIPTION,
         "task_category": category_name,
     }
 
 
 # Обработчики для кнопок выбора поля
 async def on_name_edit_clicked(
-    callback: CallbackQuery, button: Button, dialog_manager: DialogManager
+    callback: CallbackQuery,
+    button: Button,
+    dialog_manager: DialogManager,
 ) -> None:
     """Обработчик кнопки редактирования названия."""
 
@@ -116,7 +143,9 @@ async def on_name_edit_clicked(
 
 
 async def on_description_edit_clicked(
-    callback: CallbackQuery, button: Button, dialog_manager: DialogManager
+    callback: CallbackQuery,
+    button: Button,
+    dialog_manager: DialogManager,
 ) -> None:
     """Обработчик кнопки редактирования описания."""
 
@@ -125,7 +154,9 @@ async def on_description_edit_clicked(
 
 
 async def on_category_edit_clicked(
-    callback: CallbackQuery, button: Button, dialog_manager: DialogManager
+    callback: CallbackQuery,
+    button: Button,
+    dialog_manager: DialogManager,
 ) -> None:
     """Обработчик кнопки редактирования категории."""
 
@@ -134,7 +165,9 @@ async def on_category_edit_clicked(
 
 
 async def on_end_date_edit_clicked(
-    callback: CallbackQuery, button: Button, dialog_manager: DialogManager
+    callback: CallbackQuery,
+    button: Button,
+    dialog_manager: DialogManager,
 ) -> None:
     """Обработчик кнопки редактирования даты завершения."""
 
@@ -161,7 +194,11 @@ async def on_name_updated(
     )
 
     if result["error"]:
-        await message.answer(f"❌ Ошибка обновления: {result['error']}")
+        await message.answer(
+            ERROR_UPDATE_TASK.format(
+                error=result["error"],
+            )
+        )
     else:
         await message.answer(SUCCESS_TASK_UPDATED)
 
@@ -186,7 +223,11 @@ async def on_description_updated(
     )
 
     if result["error"]:
-        await message.answer(f"❌ Ошибка обновления: {result['error']}")
+        await message.answer(
+            ERROR_UPDATE_TASK.format(
+                error=result["error"],
+            )
+        )
     else:
         await message.answer(SUCCESS_TASK_UPDATED)
 
@@ -211,7 +252,7 @@ async def on_category_updated(
         if category_id:
             update_data = {"category_id": category_id}
         else:
-            await message.answer("❌ Ошибка при создании категории")
+            await message.answer(ERROR_CREATE_CATEGORY)
             return
 
     result = await update_task(
@@ -221,7 +262,11 @@ async def on_category_updated(
     )
 
     if result["error"]:
-        await message.answer(f"❌ Ошибка обновления: {result['error']}")
+        await message.answer(
+            ERROR_UPDATE_TASK.format(
+                error=result["error"],
+            )
+        )
     else:
         await message.answer(SUCCESS_TASK_UPDATED)
 
@@ -238,9 +283,10 @@ async def on_end_date_updated(
 
     try:
         moscow_tz = ZoneInfo(TIMEZONE)
-        end_dt = datetime.strptime(text, "%Y-%m-%d %H:%M").replace(
-            tzinfo=moscow_tz
-        )  # noqa: E501
+        end_dt = datetime.strptime(
+            text,
+            "%Y-%m-%d %H:%M",
+        ).replace(tzinfo=moscow_tz)
 
         task_id = dialog_manager.dialog_data["task_id"]
         user_id = dialog_manager.event.from_user.id
@@ -252,7 +298,11 @@ async def on_end_date_updated(
         )
 
         if result["error"]:
-            await message.answer(f"❌ Ошибка обновления: {result['error']}")
+            await message.answer(
+                ERROR_UPDATE_TASK.format(
+                    error=result["error"],
+                ),
+            )
         else:
             await message.answer(SUCCESS_TASK_UPDATED)
 
@@ -275,7 +325,7 @@ async def on_edit_cancel(
 # Диалог редактирования задачи
 edit_task_dialog = Dialog(
     Window(
-        Const("📝 Выберите задачу для редактирования:"),
+        Const(SELECT_TASK_EDIT),
         Group(
             Select(
                 id="task_select",
@@ -286,46 +336,56 @@ edit_task_dialog = Dialog(
             ),
             width=1,
         ),
-        Cancel(Const(BUTTON_CANCEL), on_click=on_edit_cancel),
+        Cancel(
+            Const(BUTTON_CANCEL),
+            on_click=on_edit_cancel,
+        ),
         state=EditTaskStates.select_task,
         getter=get_tasks_for_editing,
     ),
     Window(
-        Format(
-            "✏️ Редактирование задачи: {task_name}\n\nВыберите поле для редактирования:"  # noqa: E501
-        ),
+        Format(EDIT_TASK_HEADER),
         Column(
             Button(
-                Const("📝 Название"),
+                Const(BUTTON_EDIT_NAME),
                 id="edit_name",
                 on_click=on_name_edit_clicked,
             ),
             Button(
-                Const("📋 Описание"),
+                Const(BUTTON_EDIT_DESCRIPTION),
                 id="edit_description",
                 on_click=on_description_edit_clicked,
             ),
             Button(
-                Const("🏷️ Категория"),
+                Const(BUTTON_EDIT_CATEGORY),
                 id="edit_category",
                 on_click=on_category_edit_clicked,
             ),
             Button(
-                Const("⏰ Дата завершения"),
+                Const(BUTTON_EDIT_END_DATE),
                 id="edit_end_date",
                 on_click=on_end_date_edit_clicked,
             ),
         ),
         Back(Const(BUTTON_BACK)),
-        Cancel(Const(BUTTON_CANCEL), on_click=on_edit_cancel),
+        Cancel(
+            Const(BUTTON_CANCEL),
+            on_click=on_edit_cancel,
+        ),
         state=EditTaskStates.choose_field,
         getter=get_task_data,
     ),
     Window(
         Const(TASK_NAME_PROMPT),
-        TextInput(id="edit_name_input", on_success=on_name_updated),
+        TextInput(
+            id="edit_name_input",
+            on_success=on_name_updated,
+        ),
         Back(Const(BUTTON_BACK)),
-        Cancel(Const(BUTTON_CANCEL), on_click=on_edit_cancel),
+        Cancel(
+            Const(BUTTON_CANCEL),
+            on_click=on_edit_cancel,
+        ),
         state=EditTaskStates.edit_name,
     ),
     Window(
@@ -335,21 +395,36 @@ edit_task_dialog = Dialog(
             on_success=on_description_updated,
         ),
         Back(Const(BUTTON_BACK)),
-        Cancel(Const(BUTTON_CANCEL), on_click=on_edit_cancel),
+        Cancel(
+            Const(BUTTON_CANCEL),
+            on_click=on_edit_cancel,
+        ),
         state=EditTaskStates.edit_description,
     ),
     Window(
         Const(TASK_CATEGORY_PROMPT),
-        TextInput(id="edit_category_input", on_success=on_category_updated),
+        TextInput(
+            id="edit_category_input",
+            on_success=on_category_updated,
+        ),
         Back(Const(BUTTON_BACK)),
-        Cancel(Const(BUTTON_CANCEL), on_click=on_edit_cancel),
+        Cancel(
+            Const(BUTTON_CANCEL),
+            on_click=on_edit_cancel,
+        ),
         state=EditTaskStates.edit_category,
     ),
     Window(
         Const(TASK_END_DATE_PROMPT.format(timezone=TIMEZONE)),
-        TextInput(id="edit_end_date_input", on_success=on_end_date_updated),
+        TextInput(
+            id="edit_end_date_input",
+            on_success=on_end_date_updated,
+        ),
         Back(Const(BUTTON_BACK)),
-        Cancel(Const(BUTTON_CANCEL), on_click=on_edit_cancel),
+        Cancel(
+            Const(BUTTON_CANCEL),
+            on_click=on_edit_cancel,
+        ),
         state=EditTaskStates.edit_end_date,
     ),
 )

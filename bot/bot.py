@@ -46,7 +46,10 @@ async def add_task_command(
 ) -> None:
     """Запуск диалога добавления новой задачи."""
 
-    await dialog_manager.start(AddTaskStates.name, mode=StartMode.RESET_STACK)
+    await dialog_manager.start(
+        AddTaskStates.name,
+        mode=StartMode.RESET_STACK,
+    )
 
 
 @dp.message(Command("edit_task"))
@@ -81,7 +84,10 @@ async def delete_task_command(
 
 @dp.message(Command("tasks"))
 @tasks_check
-async def list_tasks(message: types.Message, tasks: list) -> None:
+async def list_tasks(
+    message: types.Message,
+    tasks: list,
+) -> None:
     """Показывает список всех задач пользователя."""
 
     # Форматирование списка задач

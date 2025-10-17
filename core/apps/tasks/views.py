@@ -58,9 +58,8 @@ class TaskViewSet(
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
-        """
-        Отображение для пользователей своих задач.
-        """
+        """Отображение для пользователей своих задач."""
+
         queryset = Task.objects.select_related(
             "user",
             "category",
@@ -72,10 +71,14 @@ class TaskViewSet(
 
         return queryset.none()
 
-    def list(self, request, *args, **kwargs) -> Response | Any:
-        """
-        Переопределение list для обязательной фильтрации.
-        """
+    def list(
+        self,
+        request,
+        *args,
+        **kwargs,
+    ) -> Response | Any:
+        """Переопределение list для обязательной фильтрации."""
+
         if not request.query_params.get("user_telegram_id"):
             return Response(
                 {
@@ -84,10 +87,20 @@ class TaskViewSet(
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        return super().list(request, *args, **kwargs)
+        return super().list(
+            request,
+            *args,
+            **kwargs,
+        )
 
-    def retrieve(self, request, *args, **kwargs) -> Response:
+    def retrieve(
+        self,
+        request,
+        *args,
+        **kwargs,
+    ) -> Response:
         """Получение конкретной задачи с проверкой принадлежности."""
+
         instance = self.get_object()
         telegram_id = request.query_params.get("user_telegram_id")
 
@@ -101,8 +114,14 @@ class TaskViewSet(
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
-    def update(self, request, *args, **kwargs) -> Response:
+    def update(
+        self,
+        request,
+        *args,
+        **kwargs,
+    ) -> Response:
         """Обновление задачи с проверкой принадлежности."""
+
         instance = self.get_object()
         telegram_id = request.query_params.get("user_telegram_id")
 
@@ -113,9 +132,18 @@ class TaskViewSet(
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        return super().update(request, *args, **kwargs)
+        return super().update(
+            request,
+            *args,
+            **kwargs,
+        )
 
-    def partial_update(self, request, *args, **kwargs) -> Response:
+    def partial_update(
+        self,
+        request,
+        *args,
+        **kwargs,
+    ) -> Response:
         """
         Частичное обновление задачи с проверкой принадлежности.
         """
@@ -129,10 +157,20 @@ class TaskViewSet(
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        return super().partial_update(request, *args, **kwargs)
+        return super().partial_update(
+            request,
+            *args,
+            **kwargs,
+        )
 
-    def destroy(self, request, *args, **kwargs) -> Response:
+    def destroy(
+        self,
+        request,
+        *args,
+        **kwargs,
+    ) -> Response:
         """Удаление задачи с проверкой принадлежности."""
+
         instance = self.get_object()
         telegram_id = request.query_params.get("user_telegram_id")
 
