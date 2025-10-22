@@ -96,6 +96,7 @@ async def create_task_from_dialog(dialog_manager: DialogManager) -> None:
         async with session.post(
             TASKS_URL,
             json=task_payload,
+            timeout=10,
         ) as response:
             if response.status not in (200, 201):
                 error_text = await response.text()

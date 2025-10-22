@@ -89,12 +89,16 @@ def schedule_task_reminder(
         print(LOG_SIGNALS_NO_TELEGRAM_USER.format(instance.name))
         return
 
-    # Проверка, что дедлайн в будущем
     now = timezone.now()
+
+    if instance.end_date > now and instance.reminder_sent_at is not None:
+        Task.objects.filter(pk=instance.pk).update(reminder_sent_at=None)
+
+    # Проверка, что дедлайн в будущем
     if instance.end_date <= now:
         print(LOG_SIGNALS_DEADLINE_PASSED.format(instance.name))
 
-        # Отменяет существующую задачу если есть
+        # Отмена существующей задачи если есть
         cancel_existing_reminder(instance.pk, instance.name)
         delete_reminder_task_id(instance.pk)
         return
@@ -127,13 +131,13 @@ def schedule_task_reminder(
         )
 
     else:
-        # Отменяет существующую задачу
+        # Отмена существующей задачи
         was_cancelled = cancel_existing_reminder(
             instance.pk,
             instance.name,
         )
 
-        # Планирует новое напоминание
+        # Планирование нового напоминания
         result = send_task_reminder.apply_async(
             args=(instance.pk,),
             eta=eta_utc,
@@ -167,15 +171,14 @@ def cleanup_past_reminders(
     created,
     **kwargs,
 ):
-    """
-    ОЧИЩАЕТ ДАННЫЕ О НАПОМИНАНИЯХ ДЛЯ ЗАДАЧ С ПРОШЕДШИМ ДЕДЛАЙНОМ
-    """
+    """Очистка данных о напоминаниях для задач с прошедшим дедлайном."""
+
     if created:
         return
 
     now = timezone.now()
 
-    # Проверяем, стала ли дата завершения в прошлом
+    # Проверка стала ли дата завершения в прошлом
     if instance.end_date <= now:
         cancel_existing_reminder(
             instance.pk,

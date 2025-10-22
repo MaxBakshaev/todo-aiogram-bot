@@ -105,8 +105,17 @@ def send_task_reminder(task_pk):
     🔖 Категория: Покупки
     """
 
+    now = timezone.now()
+    updated = Task.objects.filter(
+        pk=task_pk,
+        reminder_sent_at__isnull=True,
+    ).update(reminder_sent_at=now)
+
+    if updated == 0:
+        return
+
     try:
-        task = Task.objects.select_related("user").get(pk=task_pk)
+        task = Task.objects.select_related("user", "category").get(pk=task_pk)
     except Task.DoesNotExist:
         print(LOG_CELERY_TASK_NOT_FOUND.format(task_pk))
         return
@@ -123,7 +132,7 @@ def send_task_reminder(task_pk):
         return
 
     # Конвертация времени в часовой зоне Москвы для отображения
-    moscow_tz = timezone.get_current_timezone()  # Теперь будет Europe/Moscow
+    moscow_tz = timezone.get_current_timezone()
     local_dt = timezone.localtime(task.end_date, moscow_tz)
 
     # Формирование сообщения

@@ -69,6 +69,12 @@ class Task(models.Model):
         default=timezone.now,
         verbose_name="Дата завершения",
     )
+    reminder_sent_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name="Напоминание отправлено",
+    )
     category = models.ForeignKey(
         Category,
         verbose_name="Категория",
