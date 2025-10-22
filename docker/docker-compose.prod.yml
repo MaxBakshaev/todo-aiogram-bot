@@ -59,8 +59,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 50M
-    command: redis-server --maxmemory 32mb --maxmemory-policy allkeys-lru
+          memory: 256M
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
 
   celery:
     build:
@@ -79,7 +79,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 100M
+          memory: 256M
 
   bot:
     build:
